@@ -6,9 +6,7 @@ To run this, use something like:
     ../../bin/pyspark gmm_clustering.py local kmeans_data.txt 2 0.1
 """
 
-
 import sys
-
 import numpy as np
 import scipy as sp # for multivariate normal
 from pyspark import SparkContext
@@ -46,30 +44,28 @@ if __name__ == "__main__":
     lines = sc.textFile(sys.argv[2])
     data_points = lines.map(parseVector).cache()
     num_clusters = int(sys.argv[3])
-
     num_points = data_points.count()
-    print("Number of points we have here:", num_points)
+    print("Number of points we have in the file:", num_points)
 
-    # Initialize parameters
+    ## Initialize parameters
     centers = data_points.take(num_clusters) # randomly choose points to initialize the centers
-    dim = len(centers[0]) # dim = dimension = number of features
+    dim = len(centers[0]) # dim = number of features
     cov_matrices = [ np.identity(dim) ] * num_clusters
     pi = np.ones(num_clusters) / num_clusters
 
-    # E Step: Compute the responsibilities
-    resp = data_points.map(lambda point: (point, responsibilities(point, pi, centers, cov_matrices) ) )
+    ## E Step: Compute the responsibilities
+    resp = data_points.map(lambda p: (p, responsibilities(p, pi, centers, cov_matrices) ) )
     # format of resp: (point, numpy_array_of_responsibilities)
         
-    # M Step: Update the parameters
+    ## M Step: Update the parameters
     # In the following part, (p1, r1) stands for (point_1, responsibility_1)
-    pi = resp.reduce(lambda (p1, r1), (p2, r2) : r1 + r2) / num_points  # we don't need points here, so ignore them.
+    pi = resp.reduce(lambda (p1, r1), (p2, r2) : r1 + r2) / num_points  # we don't need points here, so ignore them (just look at responsibilities)
     temp = resp.map(lambda (p, r): np.array([p * k for k in r])) # make a 2-d array
-    centers = temp.reduce(lambda tmp1, tmp2: tmp1 + tmp2) / num_points / np.array([[i] * dim for i in pi])
-
+    centers = temp.reduce(lambda t1, t2: t1 + t2) / num_points / np.array([[i] * dim for i in pi]) # fit the shape of the array so we can do division
     temp2 = np.array([transpose_and_multiply(c) for c in centers ])
     
     temp3 = resp.map(lambda (p, r): np.array([k * transpose_and_multiply(p) for k in r]))
-    temp3 = temp3.reduce(lambda tmp1, tmp2: tmp1 + tmp2) / num_points / np.array([[i] * dim * dim for i in pi]).reshape(num_clusters, dim, dim)
+    temp3 = temp3.reduce(lambda t1, t2: t1 + t2) / num_points / np.array([[i] * dim * dim for i in pi]).reshape(num_clusters, dim, dim) # fit the shape of the array so we can do division
     cov_matrices = temp3 - temp2
     import pdb; pdb.set_trace()
     
