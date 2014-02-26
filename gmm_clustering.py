@@ -52,8 +52,8 @@ if __name__ == "__main__":
 
     # Initialize parameters
     centers = data_points.take(num_clusters) # randomly choose points to initialize the centers
-    dimension = len(centers[0]) # dimension = number of features
-    cov_matrices = [ np.identity(dimension) ] * num_clusters
+    dim = len(centers[0]) # dim = dimension = number of features
+    cov_matrices = [ np.identity(dim) ] * num_clusters
     pi = np.ones(num_clusters) / num_clusters
 
     # E Step: Compute the responsibilities
@@ -63,19 +63,16 @@ if __name__ == "__main__":
     # M Step: Update the parameters
     # In the following part, (p1, r1) stands for (point_1, responsibility_1)
     pi = resp.reduce(lambda (p1, r1), (p2, r2) : r1 + r2) / num_points  # we don't need points here, so ignore them.
-    temp = resp.map(lambda (p, r): np.array([p * i for i in r])) # make a 2-d array
-    centers = temp.reduce(lambda tmp1, tmp2: tmp1 + tmp2) / num_points / np.array([[i] * dimension for i in pi])
+    temp = resp.map(lambda (p, r): np.array([p * k for k in r])) # make a 2-d array
+    centers = temp.reduce(lambda tmp1, tmp2: tmp1 + tmp2) / num_points / np.array([[i] * dim for i in pi])
 
-    transpose_and_multiply
     temp2 = np.array([transpose_and_multiply(c) for c in centers ])
     
+    temp3 = resp.map(lambda (p, r): np.array([k * transpose_and_multiply(p) for k in r]))
+    temp3 = temp3.reduce(lambda tmp1, tmp2: tmp1 + tmp2) / num_points / np.array([[i] * dim * dim for i in pi]).reshape(num_clusters, dim, dim)
+    cov_matrices = temp3 - temp2
     import pdb; pdb.set_trace()
-#    cov_matrices = resp.reduce(lambda (p1, r1), (p2, r2): ):
     
-    #centers = 
-    #cov_matrices
-    
-
     # Check for convergence
 
     # Print out the result
