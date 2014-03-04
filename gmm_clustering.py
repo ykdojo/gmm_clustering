@@ -48,31 +48,36 @@ if __name__ == "__main__":
     print("Number of points we have in the file:", num_points)
 
     ## Initialize parameters
+    ## TODO: Randomize the following part
     centers = data_points.take(num_clusters) # randomly choose points to initialize the centers
     dim = len(centers[0]) # dim = number of features
     cov_matrices = [ np.identity(dim) ] * num_clusters
     pi = np.ones(num_clusters) / num_clusters
 
-    ## E Step: Compute the responsibilities
-    resp = data_points.map(lambda p: (p, responsibilities(p, pi, centers, cov_matrices) ) )
-    # format of resp: (point, numpy_array_of_responsibilities)
+    count = 0
+    while count < 300:
+        ## E Step: Compute the responsibilities
+        resp = data_points.map(lambda p: (p, responsibilities(p, pi, centers, cov_matrices) ) )
+        # format of resp: (point, numpy_array_of_responsibilities)
+            
+        ## M Step: Update the parameters
+        # In the following part, (p1, r1) stands for (point_1, responsibility_1)
+        pi = resp.map(lambda (p, r): r).reduce( lambda r1, r2: r1 + r2 ) / num_points
+        temp = resp.map(lambda (p, r): np.array([p * k for k in r])) # make a 2-d array
+        centers = temp.reduce(lambda t1, t2: t1 + t2) / num_points / np.array([[i] * dim for i in pi]) # fit the shape of the array so we can do division
+        temp2 = np.array([transpose_and_multiply(c) for c in centers ])
         
-    ## M Step: Update the parameters
-    # In the following part, (p1, r1) stands for (point_1, responsibility_1)
-    pi = resp.reduce(lambda (p1, r1), (p2, r2) : r1 + r2) / num_points  # we don't need points here, so ignore them (just look at responsibilities)
-    temp = resp.map(lambda (p, r): np.array([p * k for k in r])) # make a 2-d array
-    centers = temp.reduce(lambda t1, t2: t1 + t2) / num_points / np.array([[i] * dim for i in pi]) # fit the shape of the array so we can do division
-    temp2 = np.array([transpose_and_multiply(c) for c in centers ])
-    
-    temp3 = resp.map(lambda (p, r): np.array([k * transpose_and_multiply(p) for k in r]))
-    temp3 = temp3.reduce(lambda t1, t2: t1 + t2) / num_points / np.array([[i] * dim * dim for i in pi]).reshape(num_clusters, dim, dim) # fit the shape of the array so we can do division
-    cov_matrices = temp3 - temp2
-    import pdb; pdb.set_trace()
+        temp3 = resp.map(lambda (p, r): np.array([k * transpose_and_multiply(p) for k in r]))
+        temp3 = temp3.reduce(lambda t1, t2: t1 + t2) / num_points / np.array([[i] * dim * dim for i in pi]).reshape(num_clusters, dim, dim) # fit the shape of the array so we can do division
+        cov_matrices = temp3 - temp2
+        import pdb; pdb.set_trace()
+        count += 1
     
     # Check for convergence
 
     # Print out the result
 
-#    print("centers", centers)
-#    print("cov_matrices", cov_matrices)
-#    print("pi", pi) 
+    print("centers", centers)
+    print("cov_matrices", cov_matrices)
+    print("pi", pi) 
+    import pdb; pdb.set_trace()
