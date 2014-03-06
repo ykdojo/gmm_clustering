@@ -112,11 +112,6 @@ if __name__ == "__main__":
             .map(lambda p: np.log( sum([pi[k] * multivariate_normal(centers[k], cov_matrices[k]).pdf(p) for k in range(0, NUM_CLUSTERS)]) ) ) \
             .reduce(lambda a, b: a + b)
         
-#        # just some code for debugging..
-#        with open("debug.txt", "a") as myfile:
-#            myfile.write(str(log_prob))
-#            myfile.write("\n")
-
         ## At the first loop, set the initial decrease
         if loop_count == 0:
             initial_decrease_in_log_prob = log_prob - old_log_prob
@@ -127,6 +122,8 @@ if __name__ == "__main__":
         ## Check for covergence: decrease in log probability is very very small
         if decrease_in_log_prob <= initial_decrease_in_log_prob * 10**(-CONVERGENCE_ORDER):
             break
+    # hard-assign each point to the "closest", most probable cluster
+    hard_assignments = resp.map(lambda (p,r): (p, argmax(r))) 
        
     # Print out the results for immediate inspection
     print("loop_count", loop_count)
@@ -136,3 +133,4 @@ if __name__ == "__main__":
 
     # Output the results
     output_results(pi, centers, cov_matrices, OUTPUT_FILE)
+    resp.saveAsTextFile(OUTPUT_FILE)
