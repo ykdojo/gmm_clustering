@@ -13,7 +13,6 @@ To run this, use something like:
 import sys
 import os
 import numpy as np
-import scipy as sp # for multivariate normal
 from pyspark import SparkContext
 
 # TODO: In Scipy 0.14.0, multivariate_normal is available, but not in the current version (0.13).
@@ -40,8 +39,24 @@ def transpose_and_multiply(np_array):
     # need to cast to matrix in order to tranpose a one-dimentional array
     return np.transpose(np.matrix(np_array)).dot(np.matrix(np_array))
 
+## The following two methods are for writing out the output
+# input: one-dimensional numpy array ([1,2,3])
+# output: csv-like string ("1,2,3\n")
+def np_array_to_csv(np_array):
+    return str(np_array.tolist())[1:-1] + "\n"
+
+# input: parameters and a file path
+# output: outputs the resulst (parameters) in the specified file
+def output_results(pi, centers, cov_matrices, file_path):
+   f = open(file_path, 'w+') 
+   f.write(np_array_to_csv(pi))
+   for i in range(0, len(pi)):
+       f.write(np_array_to_csv(centers[i]))
+       for j in range(0, len(cov_matrices[i])):
+           f.write(np_array_to_csv(cov_matrices[i][j]))
+   f.close()
+
 if __name__ == "__main__":
-    # TODO: edit the following part later
     if len(sys.argv) < 5:
         print >> sys.stderr, "Usage: gmm_clustering <master> <input_file> <#clusters> <output_file> <covergence_order (optional)> <seed (optional)>"
         exit(-1)
@@ -51,6 +66,7 @@ if __name__ == "__main__":
     lines = sc.textFile(sys.argv[2])
     data_points = lines.map(parseVector).cache()
     NUM_CLUSTERS = int(sys.argv[3])
+    OUTPUT_FILE = (sys.argv[4])
     CONVERGENCE_ORDER = 6 if len(sys.argv) < 6 else int(sys.argv[5])
     # Covergence condition: (decrease in log probability) <= (initial decrease in log probability) * 10^(-CONVERGENCE_ORDER)
     SEED = 1 if len(sys.argv) < 7 else int(sys.argv[6])
@@ -112,8 +128,11 @@ if __name__ == "__main__":
         if decrease_in_log_prob <= initial_decrease_in_log_prob * 10**(-CONVERGENCE_ORDER):
             break
        
-    # Print out the result
+    # Print out the results for immediate inspection
     print("loop_count", loop_count)
     print("centers", centers)
     print("cov_matrices", cov_matrices)
     print("pi", pi) 
+
+    # Output the results
+    output_results(pi, centers, cov_matrices, OUTPUT_FILE)
