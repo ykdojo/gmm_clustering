@@ -1,6 +1,6 @@
 """
-Author: Yosuke Sugishita
-Contact: yosuke.sugishita@ubc.alumni.ubc.ca
+Author: 
+Contact: 
 Date: March 5, 2014
 
 This implements GMM (Gausian Mixture Model) clustering.
@@ -119,7 +119,6 @@ if __name__ == "__main__":
         if loop_count == 0:
             initial_decrease_in_log_prob = log_prob - old_log_prob
         decrease_in_log_prob = log_prob - old_log_prob
-        assert log_prob >= old_log_prob # make sure the log probability increases every time
         loop_count += 1 # increase the loop before break: indicates the number of iterations DONE.
 
         ## Check for covergence: decrease in log probability is very very small

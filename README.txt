@@ -1,6 +1,6 @@
 ========================
-Author: Yosuke Sugishita
-Contact: yosuke.sugishita@alumni.ubc.ca
+Author: 
+Contact: 
 Date: March 5, 2014
 ========================
 
@@ -16,6 +16,9 @@ Example: ./run <PYSPARK_HOME>/bin/pyspark local data/data.txt 3 data/output.txt 
 
 NOTE the covergence condition: (decrease in log probability) <= (initial decrease in log probability) * 10^(-CONVERGENCE_ORDER)
 The default CONVERGENCE_ORDER is 6.
+
+**WHY ALL CD'S IN ./run?
+It seems like the pyspark does not properly run when the current directory is differnt from the directory of the file being executed (!!).  This is kind of incredible and should be a better fix, but I realized cd solves this problem for the time being.  I hid it from the user's point of view, so you don't have to worry about it.
 
 
 **DIRECTORY STRUCTURE
