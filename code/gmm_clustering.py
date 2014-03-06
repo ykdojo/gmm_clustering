@@ -1,4 +1,3 @@
-# TODO: Update and check this part
 """
 Author: Yosuke Sugishita
 Contact: yosuke.sugishita@ubc.alumni.ubc.ca
@@ -74,20 +73,16 @@ if __name__ == "__main__":
     CONVERGENCE_ORDER = 6 if len(sys.argv) < 6 else int(sys.argv[5])
     # Covergence condition: (decrease in log probability) <= (initial decrease in log probability) * 10^(-CONVERGENCE_ORDER)
     SEED = 1 if len(sys.argv) < 7 else int(sys.argv[6])
-
     num_points = data_points.count()
     print("Number of points we have in the file:", num_points)
 
     ## Initialize parameters
-    # TODO: try this multiple times with different seeds?
     centers = data_points.takeSample(False, NUM_CLUSTERS, SEED) # randomly choose points to initialize the centers, withReplacement = False
     dim = len(centers[0]) # dim = number of features
-    cov_matrices = [ np.identity(dim) ] * NUM_CLUSTERS
-    pi = np.ones(NUM_CLUSTERS) / NUM_CLUSTERS
+    cov_matrices = [ np.identity(dim) ] * NUM_CLUSTERS # choose the identity matrices as the initial covariance matrices
+    pi = np.ones(NUM_CLUSTERS) / NUM_CLUSTERS # choose the uniform distribution as the initial pi
 
-    loop_count = 0
-    initial_decrease_in_log_prob = 0
-    decrease_in_log_prob = np.inf
+    loop_count = 0 # counts the number of iterations we execute
     # Initial log probability
     log_prob = data_points \
         .map(lambda p: np.log( sum([pi[k] * multivariate_normal(centers[k], cov_matrices[k]).pdf(p) for k in range(0, NUM_CLUSTERS)]) ) ) \
@@ -96,12 +91,12 @@ if __name__ == "__main__":
     # Until convergence
     while True:
         ## E Step: Compute the responsibilities
-        # NOTE: cache resp because we are going to use it a couple of times below, and also because we want to fix the values.
+        # NOTE: cache resp because we are going to use it a couple of times below, and also because we want to fix the values so they don't change later.
         resp = data_points.map(lambda p: (p, responsibilities(p, pi, centers, cov_matrices) ) ).cache()
         # format of resp: (point, numpy_array_of_responsibilities)
             
         ## M Step: Update the parameters
-        # In the following part, (p1, r1) stands for (point_1, responsibility_1)
+        # In the following part, (p, r) stands for (point, responsibility)
         pi = resp.map(lambda (p, r): r).reduce( lambda r1, r2: r1 + r2 ) / num_points
         centers = resp.map(lambda (p, r): np.array([p * k for k in r])) \
             .reduce(lambda t1, t2: t1 + t2) / num_points / np.array([[i] * dim for i in pi]) # fit the shape of the array so we can do division
@@ -120,14 +115,14 @@ if __name__ == "__main__":
         if loop_count == 0:
             initial_decrease_in_log_prob = log_prob - old_log_prob
         decrease_in_log_prob = log_prob - old_log_prob
-        assert log_prob >= old_log_prob # making sure the log probability decreases every time
+        assert log_prob >= old_log_prob # make sure the log probability decreases every time
         loop_count += 1 # increase the loop before break: indicates the number of iterations DONE.
 
         ## Check for covergence: decrease in log probability is very very small
         if decrease_in_log_prob <= initial_decrease_in_log_prob * 10**(-CONVERGENCE_ORDER):
             break
        
-    ## Output the results
+    ## Output the results (parameters)
     output_results(pi, centers, cov_matrices, OUTPUT_FILE)
 
     ## The following part is for writing individual points and their hard assignments -- referred to Alim's code to understand the procedure.
@@ -137,8 +132,9 @@ if __name__ == "__main__":
     temp_file.close()
     # Save the point and the most probable cluster that correspond to it
     # Hack: string[0:-2] gets rid of ".0" in "1.0, 1.2, 1.0"
+    # We want to get rid of it because it's just and index, so it's supposed to be an integer
     resp.map(lambda (p, r): np_array_to_csv( np.append(p, np.argmax(r)) )[0:-2]).saveAsTextFile(temp_file.name)
-    # get the temp file using glob (a list of files)
+    # get the temp file using glob (gets a list of files)
     source_files = glob(temp_file.name + "/part-0000*")
     # append the the source files to the output file 64KB at a time
     file = open(OUTPUT_FILE,'a')
