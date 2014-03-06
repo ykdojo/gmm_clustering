@@ -14,6 +14,10 @@ import sys
 import os
 import numpy as np
 from pyspark import SparkContext
+# The following bit is for writing RDD into a file
+import tempfile
+from fileinput import input
+from glob import glob
 
 # TODO: In Scipy 0.14.0, multivariate_normal is available, but not in the current version (0.13).
 from _multivariate import multivariate_normal
@@ -41,19 +45,19 @@ def transpose_and_multiply(np_array):
 
 ## The following two methods are for writing out the output
 # input: one-dimensional numpy array ([1,2,3])
-# output: csv-like string ("1,2,3\n")
+# output: csv-like string ("1,2,3")
 def np_array_to_csv(np_array):
-    return str(np_array.tolist())[1:-1] + "\n"
+    return str(np_array.tolist())[1:-1]
 
 # input: parameters and a file path
 # output: outputs the resulst (parameters) in the specified file
 def output_results(pi, centers, cov_matrices, file_path):
    f = open(file_path, 'w+') 
-   f.write(np_array_to_csv(pi))
+   f.write(np_array_to_csv(pi) + "\n")
    for i in range(0, len(pi)):
-       f.write(np_array_to_csv(centers[i]))
+       f.write(np_array_to_csv(centers[i]) + "\n")
        for j in range(0, len(cov_matrices[i])):
-           f.write(np_array_to_csv(cov_matrices[i][j]))
+           f.write(np_array_to_csv(cov_matrices[i][j]) + "\n")
    f.close()
 
 if __name__ == "__main__":
@@ -122,15 +126,33 @@ if __name__ == "__main__":
         ## Check for covergence: decrease in log probability is very very small
         if decrease_in_log_prob <= initial_decrease_in_log_prob * 10**(-CONVERGENCE_ORDER):
             break
-    # hard-assign each point to the "closest", most probable cluster
-    hard_assignments = resp.map(lambda (p,r): (p, argmax(r))) 
        
-    # Print out the results for immediate inspection
+    ## Output the results
+    output_results(pi, centers, cov_matrices, OUTPUT_FILE)
+
+    ## The following part is for writing individual points and their hard assignments -- referred to Alim's code to understand the procedure.
+    # Thanks, Alim!
+    # create a temporary file
+    temp_file = tempfile.NamedTemporaryFile(delete=True)
+    temp_file.close()
+    # Save the point and the most probable cluster that correspond to it
+    # Hack: string[0:-2] gets rid of ".0" in "1.0, 1.2, 1.0"
+    resp.map(lambda (p, r): np_array_to_csv( np.append(p, np.argmax(r)) )[0:-2]).saveAsTextFile(temp_file.name)
+    # get the temp file using glob (a list of files)
+    source_files = glob(temp_file.name + "/part-0000*")
+    # append the the source files to the output file 64KB at a time
+    file = open(OUTPUT_FILE,'a')
+    for f in source_files:
+        source_file = open(f,'r')
+        while True:
+             input_data = source_file.read(65536)
+             if input_data:
+                 file.write(input_data)
+             else:
+                break
+
+    ## Print out the results for immediate inspection
     print("loop_count", loop_count)
     print("centers", centers)
     print("cov_matrices", cov_matrices)
     print("pi", pi) 
-
-    # Output the results
-    output_results(pi, centers, cov_matrices, OUTPUT_FILE)
-    resp.saveAsTextFile(OUTPUT_FILE)
