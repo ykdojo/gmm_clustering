@@ -1,6 +1,7 @@
 #
 # As multivariate_normal is available only in SciPy 0.14.0 which is not
-# released yet, I copied the sourse code here on Feb 25, 2014.
+# released yet, I (Yosuke) copied the sourse code here on Feb 25, 2014.
+# https://github.com/scipy/scipy/blob/master/scipy/stats/_multivariate.py
 #
 # Author: Joris Vankerschaver 2013
 #

@@ -1,12 +1,16 @@
 """
 Author: Yosuke Sugishita
 Contact: yosuke.sugishita@ubc.alumni.ubc.ca
+Date: March 5, 2014
 
 This implements GMM (Gausian Mixture Model) clustering.
 
 Usage: gmm_clustering <master> <input_file> <#clusters> <output_file> <covergence_order (optional)> <seed (optional)>
 To run this, use something like:
     ../../bin/pyspark gmm_clustering.py local kmeans_data.txt 2 output.txt 6 1
+    (or use ./run)
+
+For more info, please refer to README.txt
 """
 
 import sys
@@ -100,10 +104,10 @@ if __name__ == "__main__":
         pi = resp.map(lambda (p, r): r).reduce( lambda r1, r2: r1 + r2 ) / num_points
         centers = resp.map(lambda (p, r): np.array([p * k for k in r])) \
             .reduce(lambda t1, t2: t1 + t2) / num_points / np.array([[i] * dim for i in pi]) # fit the shape of the array so we can do division
-        temp2 = np.array([transpose_and_multiply(c) for c in centers ])
-        temp3 = resp.map(lambda (p, r): np.array([k * transpose_and_multiply(p) for k in r])) \
+        temp1 = np.array([transpose_and_multiply(c) for c in centers ])
+        temp2 = resp.map(lambda (p, r): np.array([k * transpose_and_multiply(p) for k in r])) \
             .reduce(lambda t1, t2: t1 + t2) / num_points / np.array([[i] * dim * dim for i in pi]).reshape(NUM_CLUSTERS, dim, dim) # fit the shape of the array so we can do division
-        cov_matrices = temp3 - temp2
+        cov_matrices = temp2 - temp1
 
         ## Update log probability
         old_log_prob = log_prob
@@ -115,7 +119,7 @@ if __name__ == "__main__":
         if loop_count == 0:
             initial_decrease_in_log_prob = log_prob - old_log_prob
         decrease_in_log_prob = log_prob - old_log_prob
-        assert log_prob >= old_log_prob # make sure the log probability decreases every time
+        assert log_prob >= old_log_prob # make sure the log probability increases every time
         loop_count += 1 # increase the loop before break: indicates the number of iterations DONE.
 
         ## Check for covergence: decrease in log probability is very very small
@@ -125,14 +129,14 @@ if __name__ == "__main__":
     ## Output the results (parameters)
     output_results(pi, centers, cov_matrices, OUTPUT_FILE)
 
-    ## The following part is for writing individual points and their hard assignments -- referred to Alim's code to understand the procedure.
+    ## The following part is for writing individual points and their hard assignments in to the file -- referred to Alim's code to understand the procedure.
     # Thanks, Alim!
     # create a temporary file
     temp_file = tempfile.NamedTemporaryFile(delete=True)
     temp_file.close()
     # Save the point and the most probable cluster that correspond to it
     # Hack: string[0:-2] gets rid of ".0" in "1.0, 1.2, 1.0"
-    # We want to get rid of it because it's just and index, so it's supposed to be an integer
+    # We want to get rid of it because it's just an index, so it's supposed to be an integer
     resp.map(lambda (p, r): np_array_to_csv( np.append(p, np.argmax(r)) )[0:-2]).saveAsTextFile(temp_file.name)
     # get the temp file using glob (gets a list of files)
     source_files = glob(temp_file.name + "/part-0000*")
