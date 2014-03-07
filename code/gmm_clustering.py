@@ -30,7 +30,7 @@ from _multivariate import multivariate_normal
 # input example: "1.2, 3.2, 0.5" (string)
 # output example: [1.2, 3.2, 0.5] (numpy array)
 def parseVector(line):
-    return np.array([float(x) for x in line.split(' ')])
+    return np.array([float(x) for x in line.split(',')])
 
 # input: point
 # output: (point, numpy_array_of_responsibilities)
