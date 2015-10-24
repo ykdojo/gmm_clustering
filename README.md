@@ -3,7 +3,7 @@ I created this as a mini-project for a class. It's a Spark implementation of gau
 
 It's written so that the code can be distributed on a large scale.
 
-**For the main code, please take a look at code/gmm_clustering.py**
+**For the main code, please take a look at [code/gmm_clustering.py](code/gmm_clustering.py)**
 
 ---
 
