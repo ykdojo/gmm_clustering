@@ -49,6 +49,6 @@ The log probability for each point in [data_points] is computed in parallel befo
 NOTE: I chose to use log probability for my termination condition so we will be able to try different initial parameters and compare them in the future.  As it's possible that we get stuck in a local maxima, it would be important to be able to do it.
 
 
-### NOTE ABOUT DELIMITERS
+#### NOTE ABOUT DELIMITERS
 The kmeans data in the spark examples is delimited by spaces and not commas, so I'll follow this convention in my submission as suggested by Brendan.  data/data.txt follows this convention, so please use it.
 https://github.com/apache/incubator-spark/blob/master/data/kmeans_data.txt
